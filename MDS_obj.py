@@ -20,7 +20,7 @@ qref = 1.6*10**(-19)
 class MDS_obj:
 	#profile_type=('pfile','ITERDB')	
 
-	def __init__(self,shot_num):
+	def __init__(self,shot_num=132588):
 		self.shot_num=shot_num
 		self.quant_list={}
 		self.coord={}
@@ -418,49 +418,118 @@ class MDS_obj:
 	def calc_beta(self):
 		beta=403.*10**(-5)*ne*te/Bref**2.
 
-	def calc_Lt(self,plot=False):
+	#dT_dR=calc_dT_dR(plot=False)
+	def calc_dT_dR(self,plot=False):
 		Te=self.quant_list['Te']['data']
 		t=self.quant_list['Te']['time']
 		R=self.quant_list['Te']['R']
-		R_2=(R[:-1]+R[1:])*0.5
-		(nt,nr)=np.shape(ne)
-		dTe_2=np.zeros((nt,nr-1))
+		(nt,nr)=np.shape(Te)
+		dT_dR=np.zeros((nt,nr))
+
 		for i in range(nt):
-			ne_r=self.smooth(ne[i,:],5)
-			dTe_2[i,:]=(ne_r[:-1]-ne_r[1:])/(R[:-1]-R[1:])
-		R_2=R_2[2:]
-		dTe_2=dTe_2[:,2:]
+			Te_r=self.smooth(Te[i,:],5)
+			dT_dR[i,:]=-self.finite_differences(Te_r,R)
+
 		if plot:
-			#plt.plot(R,ne)
-			plt.scatter(R,ne[int(0.5*nt),:]/np.max(ne[int(0.5*nt),:]))
-			plt.plot(R_2,dne_2[int(0.5*nt),:]/np.max(dne_2[int(0.5*nt),:]))
-			#plt.ylim(0,2)
-		self.Lne=dne_2
-		self.R_2=R_2
-		return self.R_2,self.Lne
+			Te_tmp=self.smooth(Te[int(0.5*nt),:],5)
+			plt.scatter(R,Te_tmp/np.max(Te_tmp))
+			plt.plot(R,dT_dR[int(0.5*nt),:]/np.max(abs(dT_dR[int(0.5*nt),:])))
 
+		self.dT_dR=dT_dR
 
-	def calc_Ln(self,plot=False):
+		return self.dT_dR
+
+	#dn_dR=calc_dn_dR(plot=False)
+	def calc_dn_dR(self,plot=False):
 		ne=self.quant_list['ne']['data']
 		t=self.quant_list['ne']['time']
 		R=self.quant_list['ne']['R']
 		(nt,nr)=np.shape(ne)
-		dne_2=np.zeros((nt,nr))
+		dn_dR=np.zeros((nt,nr))
 
 		for i in range(nt):
 			ne_r=self.smooth(ne[i,:],5)
-			dne_2[i,:]=-self.finite_differences(ne_r,R)
+			dn_dR[i,:]=-self.finite_differences(ne_r,R)
 
 		if plot:
 			ne_tmp=self.smooth(ne[int(0.5*nt),:],5)
 			plt.scatter(R,ne_tmp/np.max(ne_tmp))
-			plt.plot(R,dne_2[int(0.5*nt),:]/np.max(abs(dne_2[int(0.5*nt),:])))
-			#plt.ylim(0,2)
-		#a/Lne = (a/ne) * (dne/da)
-		#a/Lne = (a) * (dne/da)
-		self.a_Lne=dne_2*self.Lref
+			plt.plot(R,dn_dR[int(0.5*nt),:]/np.max(abs(dn_dR[int(0.5*nt),:])))
 
-		return self.a_Lne
+		self.dn_dR=dn_dR
+
+		return self.dn_dR
+
+	#R_list,a_Lne_list,ne_ped_list=calf_Ln_peak(plot=False)
+	def calf_Ln_peak(self,plot=False):
+		R=self.quant_list['ne']['R']
+		t=self.quant_list['ne']['time']
+		dn_dR=self.dn_dR
+		(nt,nr)=np.shape(dn_dR)
+		
+		R_list=[]
+		a_Lne_list=[]
+		ne_ped_list=[]
+
+		for i in range(nt):
+			dn_dR_tmp=dn_dR[i,:]
+			R_location,dn_dR_max,max_index=self.find_peak(R[3:],dn_dR_tmp[3:],plot=False)
+			ne_ped=(self.quant_list['ne']['data'][i,3:])[max_index]
+			#a/Lne = (a/ne) * (dne/da)
+			a_Lne=(dn_dR_max/ne_ped)*self.Lref
+
+			R_list.append(R_location)
+			a_Lne_list.append(a_Lne)
+			ne_ped_list.append(ne_ped)
+
+		if plot:
+			plt.clf()
+			plt.plot(t,a_Lne_list)
+			plt.xlabel('time')
+			plt.ylabel('a/Lne')
+			plt.show()
+
+		self.R_ne_mid_ped=R_list
+		self.a_Lne_mid_ped=a_Lne_list
+		self.ne_mid_ped=ne_ped_list
+
+		return R_list,a_Lne_list,ne_ped_list
+
+	#R_list,a_LTe_list,Te_ped_list=calf_Lt_peak(plot=False)
+	def calf_Lt_peak(self,plot=False):
+		R=self.quant_list['Te']['R']
+		t=self.quant_list['Te']['time']
+		dT_dR=self.dT_dR
+		(nt,nr)=np.shape(dT_dR)
+		
+		R_list=[]
+		a_LTe_list=[]
+		Te_ped_list=[]
+
+		for i in range(nt):
+			dT_dR_tmp=dT_dR[i,:]
+			R_location,dT_dR_max,max_index=self.find_peak(R[3:],dT_dR_tmp[3:],plot=False)
+			Te_ped=(self.quant_list['Te']['data'][i,3:])[max_index]
+			#a/LTe = (a/Te) * (dTe/da)
+			a_LTe=(dT_dR_max/Te_ped)*self.Lref
+
+			R_list.append(R_location)
+			a_LTe_list.append(a_LTe)
+			Te_ped_list.append(Te_ped)
+
+		if plot:
+			plt.clf()
+			plt.plot(t,a_LTe_list)
+			plt.xlabel('time')
+			plt.ylabel('a/LTe')
+			plt.show()
+
+		self.R_Te_mid_ped=R_list
+		self.a_LTe_list=a_LTe_list
+		self.Te_ped_list=Te_ped_list
+
+		return R_list,a_LTe_list,Te_ped_list
+
 
 	#x_location,y_max=find_peak(x,y,plot=False)
 	def find_peak(self,x,y,plot=False):
@@ -470,7 +539,7 @@ class MDS_obj:
 			plt.plot(x,y)
 			plt.axvline(x[max_index])
 			plt.show()
-		return x[max_index],y[max_index]
+		return x[max_index],y[max_index],max_index
 
 	def calc_grad(self,data,t,R):
 		dprime=np.zeros(np.shape(data))
@@ -496,28 +565,27 @@ class MDS_obj:
 
 
 
-def Auto_scan(shot_num=132588):
-	MDS_obj=MDS_obj(shot_num=shot_num)
-	#get all the quantities
-	quant_list=MDS_obj.get_all_quant(plot=False)
-	#cut the R from psi=0 to psi=0.99 ish
-	MDS_obj.cut_R()
-	#cut time to from 0.3s to 0.8s
-	MDS_obj.cut_t()
-	#interpolation all the quantities to uniform grid
-	quant_list=MDS_obj.interp_all_quant(inter_factor=1.2,plot=False)
-	#calculate the average Lref
-	Lref,Lref_err=MDS_obj.calc_Lref_avg(plot=False)
-	#calculate the Ln
-	a_Lne=MDS_obj.calc_Ln(plot=False)
+	def Auto_scan(self,shot_num=132588):
+		self.set_shot_num(shot_num=shot_num)
+		#get all the quantities
+		quant_list=self.get_all_quant(plot=False)
+		#cut the R from psi=0 to psi=0.99 ish
+		self.cut_R()
+		#cut time to from 0.3s to 0.8s
+		self.cut_t()
+		#interpolation all the quantities to uniform grid
+		quant_list=self.interp_all_quant(inter_factor=1.2,plot=False)
+		#calculate the average Lref
+		Lref,Lref_err=self.calc_Lref_avg(plot=False)
+		#calculate the dn_dR=dne/dR
+		dn_dR=self.calc_dn_dR(plot=False)
+		#calculate the dT_dR=dTe/dR
+		dT_dR=self.calc_dT_dR(plot=False)
+		R_ne_list,a_Lne_list,ne_ped_list=self.calf_Ln_peak(plot=False)
+		R_Te_list,a_LTe_list,Te_ped_list=self.calf_Lt_peak(plot=True)
 
-	R=MDS_obj.quant_list['ne']['R']
-	a_Lne_=MDS_obj.a_Lne
 	
-	x_location,y_max=MDS_obj.find_peak(R[3:],a_Lne_[60,:][3:],plot=True)
-	
-
-
-
 if test:
-	Auto_scan(shot_num=132588)
+	shot_num=132588
+	MDS_obj=MDS_obj()
+	MDS_obj.Auto_scan(shot_num=shot_num)
