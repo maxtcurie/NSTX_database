@@ -1,4 +1,4 @@
-
+#working
 window_for_FFT='hann'
 
 from scipy import signal
@@ -119,6 +119,8 @@ plt.clf()
 plt.scatter(frequency_kHZ,dB_M_frequency+dB_L_frequency)
 plt.xlabel('kHz')
 plt.ylabel('Gauss?/sqrt(Hz)')
+plt.yscale('log')
+plt.grid()
 plt.show()
 
 
