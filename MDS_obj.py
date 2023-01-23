@@ -41,6 +41,58 @@ class MDS_obj:
 		except:
 			pass
 	
+	def finite_differences(self,var,grid):
+
+		def get_mat_fd_d1_o4(size,dx,plot_matrix=False):
+			"""Creates matrix for centered finite difference, first derivative, 4th order.
+			size: size of (number of elements in) quantity to be differentiated
+			dx: grid spacing (for constant grid)."""
+
+			prefactor=1.0/(12.0*dx)
+			mat=np.zeros((size,size),dtype='float')	
+			for i in range(size):
+				if i-1 >= 0:
+					mat[i,i-1]=-8
+				if i-2 >= 0:
+					mat[i,i-2]=1
+				if i+1 <= size-1:
+					mat[i,i+1]=8
+				if i+2 <= size-1:
+					mat[i,i+2]=-1
+		   
+			mat=prefactor*mat
+
+			if plot_matrix:
+				plt.contourf(mat,50)
+				plt.colorbar()
+				plt.show()
+
+			return mat
+
+			
+		def fd_d1_o4(var,grid,mat=False):
+			"""Centered finite difference, first derivative, 4th order.
+			var: quantity to be differentiated.
+			grid: grid for var 
+			mat: matrix for the finite-differencing operator. if mat=False then it is created"""
+
+			if not mat:
+				mat=get_mat_fd_d1_o4(len(var),grid[1]-grid[0])
+
+			dvar=-np.dot(mat,var)
+			dvar[0]=0.0
+			dvar[1]=0.0
+			#dvar[2]=0.0
+			dvar[-1]=0.0
+			dvar[-2]=0.0
+			#dvar[-3]=0.0
+			return -dvar 
+
+		
+		dvar=fd_d1_o4(var,grid)
+		return dvar
+
+
 	#z2=interp_2D(z,x,y,x2,y2,plot=False)
 	def interp_2D(self,z,x,y,x2,y2,plot=False): #for z(x,y)
 		(nx,ny)=np.shape(z)
@@ -309,7 +361,7 @@ class MDS_obj:
 		t_min=0
 		t_max=1
 		pass
-		
+
 	def cut_R(self):
 		for key in self.keys_t_r:
 			data=self.quant_list[key]['data']
@@ -392,26 +444,35 @@ class MDS_obj:
 		ne=self.quant_list['ne']['data']
 		t=self.quant_list['ne']['time']
 		R=self.quant_list['ne']['R']
-		R_2=(R[:-1]+R[1:])*0.5
 		(nt,nr)=np.shape(ne)
-		dne_2=np.zeros((nt,nr-1))
+		dne_2=np.zeros((nt,nr))
+
 		for i in range(nt):
 			ne_r=self.smooth(ne[i,:],5)
-			dne_2[i,:]=(ne_r[:-1]-ne_r[1:])/(R[:-1]-R[1:])
-		R_2=R_2[2:]
-		dne_2=dne_2[:,2:]
-		if plot:
-			#plt.plot(R,ne)
-			plt.scatter(R,ne[int(0.5*nt),:]/np.max(ne[int(0.5*nt),:]))
-			plt.plot(R_2,dne_2[int(0.5*nt),:]/np.max(dne_2[int(0.5*nt),:]))
-			#plt.ylim(0,2)
-		self.Lne=dne_2
-		self.R_2=R_2
-		return self.R_2,self.Lne
+			dne_2[i,:]=-self.finite_differences(ne_r,R)
 
+		if plot:
+			ne_tmp=self.smooth(ne[int(0.5*nt),:],5)
+			plt.scatter(R,ne_tmp/np.max(ne_tmp))
+			plt.plot(R,dne_2[int(0.5*nt),:]/np.max(abs(dne_2[int(0.5*nt),:])))
+			#plt.ylim(0,2)
+		#a/Lne = (a/ne) * (dne/da)
+		#a/Lne = (a) * (dne/da)
+		self.a_Lne=dne_2*self.Lref
+
+		return self.a_Lne
+
+	#x_location,y_max=find_peak(x,y,plot=False)
+	def find_peak(self,x,y,plot=False):
+		max_index=np.argmax(abs(y))
+		if plot:
+			plt.clf()
+			plt.plot(x,y)
+			plt.axvline(x[max_index])
+			plt.show()
+		return x[max_index],y[max_index]
 
 	def calc_grad(self,data,t,R):
-
 		dprime=np.zeros(np.shape(data))
 
 		for i in range(len(t)):
@@ -435,20 +496,28 @@ class MDS_obj:
 
 
 
-if test:
-	MDS_obj=MDS_obj(shot_num=132588)
+def Auto_scan(shot_num=132588):
+	MDS_obj=MDS_obj(shot_num=shot_num)
+	#get all the quantities
 	quant_list=MDS_obj.get_all_quant(plot=False)
-
-	Lref,Lref_err=MDS_obj.calc_Lref_avg(plot=True)
-
+	#cut the R from psi=0 to psi=0.99 ish
 	MDS_obj.cut_R()
+	#cut time to from 0.3s to 0.8s
 	MDS_obj.cut_t()
+	#interpolation all the quantities to uniform grid
 	quant_list=MDS_obj.interp_all_quant(inter_factor=1.2,plot=False)
+	#calculate the average Lref
+	Lref,Lref_err=MDS_obj.calc_Lref_avg(plot=False)
+	#calculate the Ln
+	a_Lne=MDS_obj.calc_Ln(plot=False)
+
+	R=MDS_obj.quant_list['ne']['R']
+	a_Lne_=MDS_obj.a_Lne
 	
-	R,Lne_t_r=MDS_obj.calc_Ln(plot=False)
-
-	Lref,Lref_err=MDS_obj.calc_Lref_avg(plot=True)
-	print(Lref,Lref_err)
-
-
+	x_location,y_max=MDS_obj.find_peak(R[3:],a_Lne_[60,:][3:],plot=True)
 	
+
+
+
+if test:
+	Auto_scan(shot_num=132588)
