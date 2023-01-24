@@ -1,10 +1,9 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 
-
-test=True
-
+test=False
 
 mref=2.
 m_SI = mref *1.6726*10**(-27)
@@ -33,7 +32,7 @@ class MDS_obj:
 		self.t_max=0.8
 
 	def quant_report(quant):
-		print(quant['info'])
+		#print(quant['info'])
 		print(np.shape(quant['data']))
 		print(np.shape(quant['time']))
 		try:
@@ -137,7 +136,7 @@ class MDS_obj:
 		entry_tmp=OMFITmdsValue(server='nstx',treename='activespec',shot=self.shot_num,TDI='\\ACTIVESPEC::TOP.CHERS.ANALYSIS.CT1:DEN')
 		quant['data']=entry_tmp.data() #ne(time,r)
 		(nt,nr)=np.shape(quant['data'])
-		quant['info']=entry_tmp.xarray()
+		#quant['info']=entry_tmp.xarray()
 		quant['time']=entry_tmp.dim_of(1)
 		quant['R']=entry_tmp.dim_of(0)*0.01
 
@@ -156,7 +155,7 @@ class MDS_obj:
 		quant['data']=entry_tmp.data() #te(time,r)
 		quant['data']=quant['data'].T
 		(nt,nr)=np.shape(quant['data'])
-		quant['info']=entry_tmp.xarray()
+		#quant['info']=entry_tmp.xarray()
 		quant['time']=entry_tmp.dim_of(0)
 		quant['R']=entry_tmp.dim_of(1)*0.01
 
@@ -176,7 +175,7 @@ class MDS_obj:
 		entry_tmp=OMFITmdsValue(server='nstx',treename='efit01',shot=self.shot_num,TDI='\\EFIT01::QPSI')
 		quant['data']=entry_tmp.data() #q(time,r)
 		(nt,nr)=np.shape(quant['data'])
-		quant['info']=entry_tmp.xarray()
+		#quant['info']=entry_tmp.xarray()
 		quant['time']=entry_tmp.dim_of(0)
 		quant['r_t']=entry_tmp.dim_of(1) #r(time)=r[time,r]
 		quant['R']=entry_tmp.dim_of(1)[0,:] #r(time)=r[time,r]
@@ -198,7 +197,7 @@ class MDS_obj:
 		#(nt,nr)=np.shape(quant['data'])
 		print(np.shape(quant['data']))
 		
-		quant['info']=entry_tmp.xarray()
+		#quant['info']=entry_tmp.xarray()
 		quant['time']=entry_tmp.dim_of(0)
 
 		if plot:
@@ -235,7 +234,7 @@ class MDS_obj:
 		entry_tmp=OMFITmdsValue(server='nstx',treename='efit01',shot=self.shot_num,TDI='\\EFIT01::TOP.RESULTS.DERIVED:BTZ0')
 		quant['data']=entry_tmp.data() #Bt(time,r)
 		(nt,nr)=np.shape(quant['data'])
-		quant['info']=entry_tmp.xarray()
+		#quant['info']=entry_tmp.xarray()
 		quant['time']=entry_tmp.dim_of(0)
 		quant['R']=entry_tmp.dim_of(1)[int(0.5*nt),:] #GENERAL
 
@@ -252,7 +251,7 @@ class MDS_obj:
 		quant['name']='Bref'
 		entry_tmp=OMFITmdsValue(server='nstx',treename='efit01',shot=self.shot_num,TDI='\\EFIT01::TOP.RESULTS.AEQDSK:BT0')
 		quant['data']=entry_tmp.data() #Bt0(time)
-		quant['info']=entry_tmp.xarray()
+		#quant['info']=entry_tmp.xarray()
 		quant['time']=entry_tmp.dim_of(0)
 
 		if plot:
@@ -269,7 +268,7 @@ class MDS_obj:
 		quant['name']='Lref'
 		entry_tmp=OMFITmdsValue(server='nstx',treename='efit01',shot=self.shot_num,TDI='\\EFIT01::TOP.RESULTS.AEQDSK:AMINOR')
 		quant['data']=entry_tmp.data() #minor_radius(time)
-		quant['info']=entry_tmp.xarray()
+		#quant['info']=entry_tmp.xarray()
 		quant['time']=entry_tmp.dim_of(0)
 
 		if plot:
@@ -470,6 +469,7 @@ class MDS_obj:
 		R_list=[]
 		a_Lne_list=[]
 		ne_ped_list=[]
+		ne_ped_index_list=[]
 
 		for i in range(nt):
 			dn_dR_tmp=dn_dR[i,:]
@@ -481,6 +481,7 @@ class MDS_obj:
 			R_list.append(R_location)
 			a_Lne_list.append(a_Lne)
 			ne_ped_list.append(ne_ped)
+			ne_ped_index_list.append(max_index)
 
 		if plot:
 			plt.clf()
@@ -492,8 +493,8 @@ class MDS_obj:
 		self.R_ne_mid_ped=R_list
 		self.a_Lne_mid_ped=a_Lne_list
 		self.ne_mid_ped=ne_ped_list
-
-		return R_list,a_Lne_list,ne_ped_list
+		self.ne_ped_index=ne_ped_index_list
+		return R_list,a_Lne_list,ne_ped_list, ne_ped_index_list
 
 	#R_list,a_LTe_list,Te_ped_list=calf_Lt_peak(plot=False)
 	def calf_Lt_peak(self,plot=False):
@@ -505,6 +506,7 @@ class MDS_obj:
 		R_list=[]
 		a_LTe_list=[]
 		Te_ped_list=[]
+		Te_ped_index_list=[]
 
 		for i in range(nt):
 			dT_dR_tmp=dT_dR[i,:]
@@ -516,6 +518,7 @@ class MDS_obj:
 			R_list.append(R_location)
 			a_LTe_list.append(a_LTe)
 			Te_ped_list.append(Te_ped)
+			Te_ped_index_list.append(max_index)
 
 		if plot:
 			plt.clf()
@@ -528,7 +531,7 @@ class MDS_obj:
 		self.a_LTe_list=a_LTe_list
 		self.Te_ped_list=Te_ped_list
 
-		return R_list,a_LTe_list,Te_ped_list
+		return R_list,a_LTe_list,Te_ped_list,Te_ped_index_list
 
 
 	#x_location,y_max=find_peak(x,y,plot=False)
@@ -559,13 +562,33 @@ class MDS_obj:
 		
 		return dprime
 
-	def calc_nu(self):
+	def calc_coll_ei(self,plot=False):
+		Lref=self.Lref
+		#ne (/cm^3) ---> ne (10^19 /m^3)
+		ne=self.quant_list['ne']['data']*10.**(6.-19.)
+		#Te (keV)
+		te=self.quant_list['Te']['data']
+
+		(nt,nr)=np.shape(ne)
+
+		#coll_ei (cs/a)
 		coll_c=2.3031*10**(-5)*Lref*ne/(te)**2*(24-np.log(np.sqrt(ne*10**13)/(te*1000)))
+		#coll_ei 
 		coll_ei=4.*coll_c*np.sqrt(te*1000.*qref/me_SI)/Lref
+		#coll_ei in kHz
+		coll_ei=coll_ei/(2.*np.pi*1000.)
+		self.coll_ei=coll_ei
+		if plot:
+			t=self.quant_list['Te']['time']
+			R=self.quant_list['Te']['R']
+			plt.clf()
+			plt.plot(R,coll_ei[int(0.5*nt),:])
+			plt.xlabel('R (m)')
+			plt.ylabel('coll_ei (kHz)')
+			plt.show()
+		return coll_ei
 
-
-
-	def Auto_scan(self,shot_num=132588):
+	def Auto_scan(self,shot_num=132588,plot=False):
 		self.set_shot_num(shot_num=shot_num)
 		#get all the quantities
 		quant_list=self.get_all_quant(plot=False)
@@ -581,11 +604,45 @@ class MDS_obj:
 		dn_dR=self.calc_dn_dR(plot=False)
 		#calculate the dT_dR=dTe/dR
 		dT_dR=self.calc_dT_dR(plot=False)
-		R_ne_list,a_Lne_list,ne_ped_list=self.calf_Ln_peak(plot=False)
-		R_Te_list,a_LTe_list,Te_ped_list=self.calf_Lt_peak(plot=True)
+		#calculate the R, a/Lne, ne in dne/dR peak
+		R_ne_list,a_Lne_list,ne_ped_list,ne_ped_index_list=self.calf_Ln_peak(plot=False)
+		#calculate the R, a/LTe, Te in dTe/dR peak
+		R_Te_list,a_LTe_list,Te_ped_list,Te_ped_index_list=self.calf_Lt_peak(plot=False)
+		#calculate the collision
+		coll_ei=self.calc_coll_ei(plot=False)
+		coll_ei_ped_value=[coll_ei[i,ne_ped_index_list[i]] for i in range(len(ne_ped_index_list))]
+		
+		t=self.quant_list['Te']['time']
+
+		d={}
+		d['shot_num']=[shot_num]*len(t)
+		d['time']=t
+		d['a_Lne']=a_Lne_list
+		d['a_LTe']=a_LTe_list
+		d['coll_ei']=coll_ei_ped_value
+
+		df=pd.DataFrame(d)
+
+		if plot:
+
+			if 1==1:
+				plt.clf()
+				plt.plot(t,R_ne_list,label=r'R($ne_{mid ped}$)')
+				plt.plot(t,R_Te_list,label=r'R($Te_{mid ped}$)')
+				plt.legend()
+				plt.xlabel('t (s)')
+				plt.ylabel('R (m)')
+				plt.show()
+			if 1==0:
+				plt.clf()
+				plt.plot(t,coll_ei_ped_value)
+				plt.xlabel('t (s)')
+				plt.ylabel('coll_ei_ped_value (kHz)')
+				plt.show()
+		return df
 
 	
 if test:
 	shot_num=132588
 	MDS_obj=MDS_obj()
-	MDS_obj.Auto_scan(shot_num=shot_num)
+	df=MDS_obj.Auto_scan(shot_num=shot_num,plot=True)
