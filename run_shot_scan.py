@@ -22,11 +22,11 @@ if test:
 
 
 if scan:
-	#shot_min=100000
-	#shot_max=250000
+	shot_min=100000
+	shot_max=250000
 
-	shot_min=132588
-	shot_max=132590
+	#shot_min=132588
+	#shot_max=132590
 
 	shot_list=np.arange(shot_min,shot_max,dtype=int)
 	work_list=np.zeros(len(shot_list))

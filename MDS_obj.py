@@ -617,6 +617,7 @@ class MDS_obj:
 		d={}
 		d['shot_num']=[shot_num]*len(t)
 		d['time']=t
+		d['Lref']=self.quant_list['Lref']['data']
 		d['a_Lne']=a_Lne_list
 		d['a_LTe']=a_LTe_list
 		d['coll_ei']=coll_ei_ped_value
