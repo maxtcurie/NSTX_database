@@ -1,34 +1,28 @@
 from OMFITlib_MDS_obj import MDS_obj
 import pandas as pd
 
-test=False
 scan=True
 debug=False
 
 output_dir='/u/mcurie/Output/' #finish with '/'
 
-if test:
-	shot_num=132588
-	MDS_obj=MDS_obj()
-	df=MDS_obj.Auto_scan(shot_num=shot_num,plot=True)
-	
-	root['OUTPUTS']['DataFrame']=df
-	df.to_csv('file.csv')
-	root['OUTPUTS']['CSV'] = OMFITcsv('file.csv')
-	root['OUTPUTS']['CSV'].deploy('/u/mcurie/Output/output.csv')
-	
-	#dic=df.to_dict()
-	#root['OUTPUTS']['CSV']=OMFITcsv(filename='file.csv',dic)
+shot_min_list=[114100,206700]
+shot_max_list=[142500,206800]
+#shot_min_list=[132588]
+#shot_max_list=[132595]
+
+#clear the OUTPUTS
+root['OUTPUTS']['DataFrame']=OMFITtree("")
+root['OUTPUTS']['CSV']=OMFITtree("")
 
 
 if scan:
-	shot_min=100000
-	shot_max=250000
-
-	#shot_min=132588
-	#shot_max=132590
-
-	shot_list=np.arange(shot_min,shot_max,dtype=int)
+	shot_list=[]
+	for i in range(len(shot_min_list)):
+		shot_min=shot_min_list[i]
+		shot_max=shot_max_list[i]
+		for shot_num in np.arange(shot_min,shot_max,dtype=int):
+			shot_list.append(shot_num)
 	work_list=np.zeros(len(shot_list))
 
 	MDS_obj=MDS_obj()
