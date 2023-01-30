@@ -688,7 +688,7 @@ class MDS_obj:
 			#plt.xscale('log')
 		return f_list,dB_list
 
-	def interp_all_quant(self,inter_factor=2,plot=False):
+	def interp_all_quant(self,interp_factor=2,plot=False):
 
 		nt_max=0
 		for key in self.keys:
@@ -714,8 +714,8 @@ class MDS_obj:
 			if nR_max<tmp:
 				nR_max=tmp
 			
-		t_u=np.linspace(self.t_min,self.t_max,int(nt_max*inter_factor))
-		R_u=np.linspace(self.R_min,self.R_max,int(nR_max*inter_factor))
+		t_u=np.linspace(self.t_min,self.t_max,int(nt_max*interp_factor))
+		R_u=np.linspace(self.R_min,self.R_max,int(nR_max*interp_factor))
 
 		self.coord['time']=t_u
 		self.coord['R']=R_u
@@ -830,12 +830,12 @@ class MDS_obj:
 	def get_all_quant(self,plot=False):
 		if self.device=='nstx':
 			quant=self.get_Bt(plot)		#Bt(time,r)
-			quant=self.get_q0psi(plot)  	#q(time,r)
+			#quant=self.get_q0psi(plot)  	#q(time,r)
 			quant=self.get_Te(plot) 	#Te(r,time)
 			quant=self.get_ne(plot) 	#ne(time,r)
 			quant=self.get_Bref(plot) 	#Bref(time) Bt at axis
 			quant=self.get_Lref(plot) 	#Lref(time) minor radius
-			quant=self.get_psi_R(plot)
+			#quant=self.get_psi_R(plot)
 		elif self.device=='d3d':
 			quant=self.get_Te(plot) 	#Te(r,time)
 			quant=self.get_ne(plot) 	#ne(time,r)
@@ -856,8 +856,9 @@ class MDS_obj:
 		self.cut_R()
 		#cut time to from 0.3s to 0.8s
 		self.cut_t()
+		#self.test_save_worthy()
 		#interpolation all the quantities to uniform grid
-		quant_list=self.interp_all_quant(inter_factor=1.2,plot=False)
+		quant_list=self.interp_all_quant(interp_factor=1.2,plot=False)
 
 		#calculate the average Lref
 		Lref,Lref_err=self.calc_Lref_avg(plot=False)
@@ -913,7 +914,7 @@ class MDS_obj:
 
 	
 if test:
-	shot_num=132591 
+	shot_num=114154 #132588 
 	device='nstx' #'nstx', 'd3d'
 	MDS_obj=MDS_obj(device=device,shot_num=shot_num)
 	#dB=MDS_obj.get_dB1(plot=False)
@@ -922,6 +923,6 @@ if test:
 	#print(dB_list)
 	df=MDS_obj.Auto_scan(device=device,shot_num=shot_num,plot=False)
 	print(df)
-	if 1==0:
+	if 1==1:
 		plt.plot(df.Lref)
 		plt.plot(df.beta)

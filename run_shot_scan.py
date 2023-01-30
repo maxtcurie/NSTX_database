@@ -19,8 +19,6 @@ root['OUTPUTS']['DataFrame']=OMFITtree("")
 root['OUTPUTS']['CSV']=OMFITtree("")
 
 
-MDS_obj_0=MDS_obj()
-
 if shot_list_from_past:
 	from OMFITlib_shot_list import shot_list
 	shot_list=shot_list()
@@ -33,15 +31,11 @@ else:
 		for shot_num in np.arange(shot_min,shot_max,dtype=int):
 			shot_list.append(shot_num)
 
-
-if debug and shot_list_from_past:
-	shot_list=shot_list[20:40]
-	print(shot_list)
-
 work_list=np.zeros(len(shot_list))
 
 for i in tqdm(range(len(shot_list))):
 	shot_num=shot_list[i]
+	MDS_obj_0=MDS_obj(device=device,shot_num=shot_num)
 	#print('shot_num='+str(shot_num))
 	if debug:
 		df=MDS_obj_0.Auto_scan(device=device,shot_num=shot_num,plot=False)
