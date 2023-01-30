@@ -753,7 +753,7 @@ class MDS_obj:
 	def smooth_all_quant(self,box_pts=3,plot=False):
 		pass
 
-	def chose_time(self,box_pts=5,plot=False):
+	def chose_time(self,plot=False):
 		Lref=self.quant_list['Lref']['data']
 		time=self.quant_list['Te']['time']
 		
@@ -769,10 +769,13 @@ class MDS_obj:
 		M_std_3=moving_std(Lref, 5)
 		quant=M_std_3/MACD_3
 		crit=0.01
-		index=next(x[0] for x in enumerate(quant) if x[1] > crit)
-
-		t_max=time_3[index]
-		self.t_max=t_max
+		print(quant)
+		try:
+			index=next(x[0] for x in enumerate(quant) if x[1] > crit)
+			t_max=time_3[index]
+			self.t_max=t_max
+		except:
+			t_max=self.t_max
 
 		if plot:
 			plt.plot(time,Lref,label='data')
@@ -909,7 +912,7 @@ class MDS_obj:
 
 	
 if test:
-	shot_num=132591 
+	shot_num=132588 
 	device='nstx' #'nstx', 'd3d'
 	MDS_obj=MDS_obj(device=device,shot_num=shot_num)
 	#dB=MDS_obj.get_dB1(plot=False)
