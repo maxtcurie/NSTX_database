@@ -5,7 +5,7 @@ from scipy import signal
 
 from OMFITlib_FFT_general import spectral_density
 
-test=True
+test=False
 
 mref=2.
 m_SI = mref *1.6726*10**(-27)
@@ -217,7 +217,7 @@ class MDS_obj:
 		entry_tmp=OMFITmdsValue(server=self.device,treename='efit01',shot=self.shot_num,TDI='\\EFIT01::TOP.RESULTS.AEQDSK:Q0')
 		quant['data']=entry_tmp.data() #q(time)
 		#(nt,nr)=np.shape(quant['data'])
-		print(np.shape(quant['data']))
+		#print(np.shape(quant['data']))
 		
 		#quant['info']=entry_tmp.xarray()
 		quant['time']=entry_tmp.dim_of(0)
@@ -441,12 +441,12 @@ class MDS_obj:
 			d=data[i,:]
 			d = self.smooth(d, 5) 
 
-			print(len(d))
-			print(len(R))
+			#print(len(d))
+			#print(len(R))
 			dd = np.gradient(d,R)
-			print()
-			print(len(d))
-			print(len(dd))
+			#print()
+			#print(len(d))
+			#print(len(dd))
 			dprime[i,:] = -dd/d
 		
 		return dprime
@@ -755,8 +755,11 @@ class MDS_obj:
 
 	def chose_time(self,plot=False):
 		Lref=self.quant_list['Lref']['data']
-		time=self.quant_list['Te']['time']
-		
+		time=self.quant_list['Lref']['time']
+		t_min_index=np.argmin(abs(time-self.t_min))
+		Lref=Lref[t_min_index:]
+		time=time[t_min_index:]
+
 		#def moving_avg(x, w):
 		#	return np.convolve(x, np.ones(w), 'valid') / w
 		def moving_avg(x, w):
@@ -764,23 +767,23 @@ class MDS_obj:
 		
 		def moving_std(x, w):
 			return np.array([np.std(x[i:i+w]) for i in range(len(x)-w-1)])
-		MACD_3=moving_avg(Lref, 5)
-		time_3=moving_avg(time, 5)
-		M_std_3=moving_std(Lref, 5)
-		quant=M_std_3/MACD_3
-		crit=0.01
-		print(quant)
+		MACD_5=moving_avg(Lref, 5)
+		time_5=moving_avg(time, 5)
+		M_std_5=moving_std(Lref, 5)
+		quant=M_std_5/MACD_5
+		crit=0.02
+		#print(quant)
 		try:
 			index=next(x[0] for x in enumerate(quant) if x[1] > crit)
-			t_max=time_3[index]
+			t_max=time_5[index]
 			self.t_max=t_max
 		except:
 			t_max=self.t_max
 
 		if plot:
 			plt.plot(time,Lref,label='data')
-			plt.plot(time_3,MACD_3,label='MACD_3')
-			plt.plot(time_3,M_std_3,label='MACD_3')
+			plt.plot(time_5,MACD_5,label='avg_5')
+			plt.plot(time_5,M_std_5,label='std_5')
 			plt.axvline(t_max)
 			plt.legend()
 
@@ -848,15 +851,13 @@ class MDS_obj:
 		self.set_device(device=device)
 		#get all the quantities
 		quant_list=self.get_all_quant(plot=False)
-		
-		#interpolation all the quantities to uniform grid
-		quant_list=self.interp_all_quant(inter_factor=1.2,plot=False)
-		
 		self.chose_time(plot=False)
 		#cut the R from psi=0 to psi=0.99 ish
 		self.cut_R()
 		#cut time to from 0.3s to 0.8s
 		self.cut_t()
+		#interpolation all the quantities to uniform grid
+		quant_list=self.interp_all_quant(inter_factor=1.2,plot=False)
 
 		#calculate the average Lref
 		Lref,Lref_err=self.calc_Lref_avg(plot=False)
@@ -912,7 +913,7 @@ class MDS_obj:
 
 	
 if test:
-	shot_num=132588 
+	shot_num=132591 
 	device='nstx' #'nstx', 'd3d'
 	MDS_obj=MDS_obj(device=device,shot_num=shot_num)
 	#dB=MDS_obj.get_dB1(plot=False)
@@ -921,6 +922,6 @@ if test:
 	#print(dB_list)
 	df=MDS_obj.Auto_scan(device=device,shot_num=shot_num,plot=False)
 	print(df)
-	if 1==1:
+	if 1==0:
 		plt.plot(df.Lref)
 		plt.plot(df.beta)

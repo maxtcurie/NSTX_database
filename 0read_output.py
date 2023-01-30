@@ -10,16 +10,19 @@ print(dir_list)
 #dir_list=dir_list[:30]
 
 
-mode=2 	#mode 1: merge all the files and plot
+mode=1 	#mode 1: merge all the files and plot
 		#mode 2: calculate the average and std, then plot
 
-df=pd.read_csv(path+'114100.csv')
+df=pd.read_csv(path+dir_list[0])
 keys=df.keys()
-#df_merge=df
+#
 
 if mode==1:
+	df_merge=df
 	for i in dir_list:
-		if i[0]=='0':
+		if i[0]=='1' or i[0]=='2':
+			pass
+		else:
 			continue
 
 		df=pd.read_csv(path+i)
