@@ -2,7 +2,10 @@
 
 #https://omfit.io/tutorial/SCRIPTS_ADAS_demo_read_adf12.html
 
-entry_tmp=OMFITmdsValue(server='nstx',treename='efit01',shot=132588,TDI='\\EFIT01::TOP.RESULTS.AEQDSK:BETAN')
+entry_tmp=OMFITmdsValue(server='nstx',\
+			treename='efit01',\
+			shot=132588,\
+			TDI='\\EFIT01::TOP.RESULTS.AEQDSK:BETAT')
 #time=entry_tmp.dim_of(0)
 
 beta=entry_tmp.data() #R(time,r)

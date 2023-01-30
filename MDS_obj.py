@@ -1,9 +1,11 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.signal import savgol_filter
+from scipy import signal
 
-test=False
+from OMFITlib_FFT_general import spectral_density
+
+test=True
 
 mref=2.
 m_SI = mref *1.6726*10**(-27)
@@ -19,17 +21,27 @@ qref = 1.6*10**(-19)
 class MDS_obj:
 	#profile_type=('pfile','ITERDB')	
 
-	def __init__(self,shot_num=132588):
+	def __init__(self,device='nstx',shot_num=132588):
 		self.shot_num=shot_num
+		self.device=device
 		self.quant_list={}
 		self.coord={}
-		self.keys_t_r=['Bt', 'Te', 'ne']
-		self.keys_psi=['q0psi']
-		self.keys_t=['Bref', 'Lref']
-		self.R_min=0.90
-		self.R_max=1.45
-		self.t_min=0.3
-		self.t_max=0.8
+		if self.device=='nstx':
+			self.keys_t_r=['Bt', 'Te', 'ne']
+			self.keys_psi=['q0psi']
+			self.keys_t=['Bref', 'Lref']
+			self.R_min=0.90
+			self.R_max=1.45
+			self.t_min=0.3
+			self.t_max=0.8
+
+		elif self.device=='d3d':
+			self.keys_t_r=['Te', 'ne']
+			self.keys_t=['Bref', 'Lref']
+			self.R_min=0.90
+			self.R_max=1.45
+			self.t_min=0.3
+			self.t_max=0.8
 
 	def quant_report(quant):
 		#print(quant['info'])
@@ -124,6 +136,16 @@ class MDS_obj:
 
 	def set_shot_num(self,shot_num):
 		self.shot_num=shot_num
+		self.t_min=0.3
+		self.t_max=0.8
+
+	def set_device(self,device):
+		self.device=device
+		self.t_min=0.3
+		self.t_max=0.8
+		if device=='nstx':
+			self.R_min=0.90
+			self.R_max=1.45
 
 	def get_Zeff(self,plot=False):
 		pass
@@ -133,7 +155,7 @@ class MDS_obj:
 	def get_ne(self,plot=False):
 		quant={}
 		quant['name']='ne'
-		entry_tmp=OMFITmdsValue(server='nstx',treename='activespec',shot=self.shot_num,TDI='\\ACTIVESPEC::TOP.CHERS.ANALYSIS.CT1:DEN')
+		entry_tmp=OMFITmdsValue(server=self.device,treename='activespec',shot=self.shot_num,TDI='\\ACTIVESPEC::TOP.CHERS.ANALYSIS.CT1:DEN')
 		quant['data']=entry_tmp.data() #ne(time,r)
 		(nt,nr)=np.shape(quant['data'])
 		#quant['info']=entry_tmp.xarray()
@@ -151,7 +173,7 @@ class MDS_obj:
 	def get_Te(self,plot=False):
 		quant={}
 		quant['name']='Te'
-		entry_tmp=OMFITmdsValue(server='nstx',treename='activespec',shot=132588,TDI='\\ACTIVESPEC::TOP.MPTS.OUTPUT_DATA.BEST:FIT_TE	')
+		entry_tmp=OMFITmdsValue(server=self.device,treename='activespec',shot=132588,TDI='\\ACTIVESPEC::TOP.MPTS.OUTPUT_DATA.BEST:FIT_TE	')
 		quant['data']=entry_tmp.data() #te(time,r)
 		quant['data']=quant['data'].T
 		(nt,nr)=np.shape(quant['data'])
@@ -172,7 +194,7 @@ class MDS_obj:
 	def get_q0psi(self,plot=False):
 		quant={}
 		quant['name']='q0psi'
-		entry_tmp=OMFITmdsValue(server='nstx',treename='efit01',shot=self.shot_num,TDI='\\EFIT01::QPSI')
+		entry_tmp=OMFITmdsValue(server=self.device,treename='efit01',shot=self.shot_num,TDI='\\EFIT01::QPSI')
 		quant['data']=entry_tmp.data() #q(time,r)
 		(nt,nr)=np.shape(quant['data'])
 		#quant['info']=entry_tmp.xarray()
@@ -192,7 +214,7 @@ class MDS_obj:
 	def get_q0(self,plot=False):
 		quant={}
 		quant['name']='q0'
-		entry_tmp=OMFITmdsValue(server='nstx',treename='efit01',shot=self.shot_num,TDI='\\EFIT01::TOP.RESULTS.AEQDSK:Q0')
+		entry_tmp=OMFITmdsValue(server=self.device,treename='efit01',shot=self.shot_num,TDI='\\EFIT01::TOP.RESULTS.AEQDSK:Q0')
 		quant['data']=entry_tmp.data() #q(time)
 		#(nt,nr)=np.shape(quant['data'])
 		print(np.shape(quant['data']))
@@ -212,7 +234,7 @@ class MDS_obj:
 	def get_psi_R(self,plot=False):
 		quant={}
 		quant['name']='psin'
-		entry_tmp=OMFITmdsValue(server='nstx',treename='efit01',shot=self.shot_num,TDI='\\EFIT01::TOP.RESULTS.GEQDSK:PSIN')
+		entry_tmp=OMFITmdsValue(server=self.device,treename='efit01',shot=self.shot_num,TDI='\\EFIT01::TOP.RESULTS.GEQDSK:PSIN')
 
 		quant['data']=entry_tmp.data()
 		quant['psi']=entry_tmp.dim_of(0)
@@ -231,7 +253,7 @@ class MDS_obj:
 	def get_Bt(self,plot=False):
 		quant={}
 		quant['name']='Bt'
-		entry_tmp=OMFITmdsValue(server='nstx',treename='efit01',shot=self.shot_num,TDI='\\EFIT01::TOP.RESULTS.DERIVED:BTZ0')
+		entry_tmp=OMFITmdsValue(server=self.device,treename='efit01',shot=self.shot_num,TDI='\\EFIT01::TOP.RESULTS.DERIVED:BTZ0')
 		quant['data']=entry_tmp.data() #Bt(time,r)
 		(nt,nr)=np.shape(quant['data'])
 		#quant['info']=entry_tmp.xarray()
@@ -249,7 +271,7 @@ class MDS_obj:
 	def get_Bref(self,plot=False):
 		quant={}
 		quant['name']='Bref'
-		entry_tmp=OMFITmdsValue(server='nstx',treename='efit01',shot=self.shot_num,TDI='\\EFIT01::TOP.RESULTS.AEQDSK:BT0')
+		entry_tmp=OMFITmdsValue(server=self.device,treename='efit01',shot=self.shot_num,TDI='\\EFIT01::TOP.RESULTS.AEQDSK:BT0')
 		quant['data']=entry_tmp.data() #Bt0(time)
 		#quant['info']=entry_tmp.xarray()
 		quant['time']=entry_tmp.dim_of(0)
@@ -262,14 +284,126 @@ class MDS_obj:
 		self.quant_list[quant['name']]=quant
 		return quant
 
+	#dB1=get_dB1(plot=True)
+	def get_dB1(self,window_for_FFT='hann',plot=False):
+		entry_tmp=OMFITmdsValue(server=self.device,treename='operations',shot=self.shot_num,TDI='\\OPERATIONs::TOP.MAGNETICS.MIRNOV.B.BMHDODDNLF')
+		t_L=entry_tmp.dim_of(0)
+		dB_L=entry_tmp.data()
+
+		entry_tmp=OMFITmdsValue(server=self.device,treename='operations',shot=self.shot_num,TDI='\\OPERATIONs::TOP.MAGNETICS.MIRNOV.B.BMHDODDNMF')
+		t_M=entry_tmp.dim_of(0)
+		dB_M=entry_tmp.data()
+		#print(np.shape(dB_L))
+		#print(np.shape(dB_M))
+
+
+		frequency,dB_L_frequency_sq=spectral_density(dB_L,t_L,percent=0.1,window_for_FFT=window_for_FFT,plot=False)
+		frequency_kHZ=frequency/1000.
+		dB_L_frequency=abs(np.sqrt(dB_L_frequency_sq))
+
+		frequency,dB_M_frequency_sq=spectral_density(dB_M,t_M,percent=0.1,window_for_FFT=window_for_FFT,plot=False)
+		frequency_kHZ=frequency/1000.
+		dB_M_frequency=abs(np.sqrt(dB_M_frequency_sq))
+		quant={}
+		quant['name']='dB'
+		quant['data_low_freq']=dB_L_frequency
+		quant['data_mid_freq']=dB_M_frequency
+		quant['freq']=frequency_kHZ
+		self.dB=quant
+		if plot:
+			plt.clf()
+			plt.scatter(frequency_kHZ,dB_M_frequency+dB_L_frequency)
+			plt.xlabel('kHz')
+			plt.ylabel('Gauss?/sqrt(Hz)')
+			plt.yscale('log')
+			plt.grid()
+			plt.show()
+		return quant
+
+	def get_dB1_t(self,window_for_FFT='hann',plot=False):
+		entry_tmp=OMFITmdsValue(server=self.device,treename='operations',shot=self.shot_num,TDI='\\OPERATIONs::TOP.MAGNETICS.MIRNOV.B.BMHDODDNLF')
+		t_L=entry_tmp.dim_of(0)
+		dB_L=entry_tmp.data()
+
+		entry_tmp=OMFITmdsValue(server=self.device,treename='operations',shot=self.shot_num,TDI='\\OPERATIONs::TOP.MAGNETICS.MIRNOV.B.BMHDODDNMF')
+		t_M=entry_tmp.dim_of(0)
+		dB_M=entry_tmp.data()
+		#print(np.shape(dB_L))
+		#print(np.shape(dB_M))
+
+		quant_list['Lref']
+
+		frequency,dB_L_frequency_sq=spectral_density(dB_L,t_L,percent=0.1,window_for_FFT=window_for_FFT,plot=False)
+		frequency_kHZ=frequency/1000.
+		dB_L_frequency=abs(np.sqrt(dB_L_frequency_sq))
+
+		frequency,dB_M_frequency_sq=spectral_density(dB_M,t_M,percent=0.1,window_for_FFT=window_for_FFT,plot=False)
+		frequency_kHZ=frequency/1000.
+		dB_M_frequency=abs(np.sqrt(dB_M_frequency_sq))
+		quant={}
+		quant['name']='dB'
+		quant['data_low_freq']=dB_L_frequency
+		quant['data_mid_freq']=dB_M_frequency
+		quant['freq']=frequency_kHZ
+		self.dB=quant
+		if plot:
+			plt.clf()
+			plt.scatter(frequency_kHZ,dB_M_frequency+dB_L_frequency)
+			plt.xlabel('kHz')
+			plt.ylabel('Gauss?/sqrt(Hz)')
+			plt.yscale('log')
+			plt.grid()
+			plt.show()
+		return quant
+
+
+	
+	def get_dn1(self,window_for_FFT='hann',plot=False):
+		entry_tmp=OMFITmdsValue(server=self.device,treename='operations',shot=self.shot_num,TDI='\\OPERATIONs::TOP.MAGNETICS.MIRNOV.B.BMHDODDNLF')
+		t_L=entry_tmp.dim_of(0)
+		dB_L=entry_tmp.data()
+
+		entry_tmp=OMFITmdsValue(server=self.device,treename='operations',shot=self.shot_num,TDI='\\OPERATIONs::TOP.MAGNETICS.MIRNOV.B.BMHDODDNMF')
+		t_M=entry_tmp.dim_of(0)
+		dB_M=entry_tmp.data()
+		#print(np.shape(dB_L))
+		#print(np.shape(dB_M))
+
+
+		frequency,dB_L_frequency_sq=spectral_density(dB_L,t_L,percent=0.1,window_for_FFT=window_for_FFT,plot=False)
+		frequency_kHZ=frequency/1000.
+		dB_L_frequency=abs(np.sqrt(dB_L_frequency_sq))
+
+		frequency,dB_M_frequency_sq=spectral_density(dB_M,t_M,percent=0.1,window_for_FFT=window_for_FFT,plot=False)
+		frequency_kHZ=frequency/1000.
+		dB_M_frequency=abs(np.sqrt(dB_M_frequency_sq))
+		quant={}
+		quant['name']='dB'
+		quant['data_low_freq']=dB_L_frequency
+		quant['data_mid_freq']=dB_M_frequency
+		quant['freq']=frequency_kHZ
+		self.dB=quant
+		if plot:
+			plt.clf()
+			plt.scatter(frequency_kHZ,dB_M_frequency+dB_L_frequency)
+			plt.xlabel('kHz')
+			plt.ylabel('Gauss?/sqrt(Hz)')
+			plt.yscale('log')
+			plt.grid()
+			plt.show()
+		return quant
+
+
 	#quant['Lref']=MDS_obj.get_Lref(plot=True) #Lref(time) minor radius
 	def get_Lref(self,plot=False):
 		quant={}
 		quant['name']='Lref'
-		entry_tmp=OMFITmdsValue(server='nstx',treename='efit01',shot=self.shot_num,TDI='\\EFIT01::TOP.RESULTS.AEQDSK:AMINOR')
+		entry_tmp=OMFITmdsValue(server=self.device,treename='efit01',shot=self.shot_num,TDI='\\EFIT01::TOP.RESULTS.AEQDSK:AMINOR')
 		quant['data']=entry_tmp.data() #minor_radius(time)
 		#quant['info']=entry_tmp.xarray()
 		quant['time']=entry_tmp.dim_of(0)
+		if self.device=='d3d':
+			quant['time']=quant['time']*0.001
 
 		if plot:
 			plt.plot(quant['time'],quant['data'])   
@@ -279,127 +413,11 @@ class MDS_obj:
 		self.quant_list[quant['name']]=quant
 		return quant
 
-	def get_all_quant(self,plot=False):
-		quant=self.get_Bt(plot)		#Bt(time,r)
-		quant=self.get_q0psi(plot)  	#q(time,r)
-		quant=self.get_Te(plot) 	#Te(r,time)
-		quant=self.get_ne(plot) 	#ne(time,r)
-		quant=self.get_Bref(plot) 	#Bref(time) Bt at axis
-		quant=self.get_Lref(plot) 	#Lref(time) minor radius
-		quant=self.get_psi_R(plot)
-		
-		self.keys=self.quant_list.keys()
-		return self.quant_list
+	def calc_ome(self,plot=False):
+		kymin=n0*q0*rhoref/(Lref*x0_center)
+		kyGENE =kymin * (q/q0) * np.sqrt(te_u/te_mid) * (x0_center/uni_rhot) #Add the effect of the q varying
+		omMTM = kyGENE*(tprime_e+nprime_e)
 
-	def interp_all_quant(self,inter_factor=2,plot=False):
-
-		nt_max=0
-		for key in self.keys:
-			try:
-				time=self.quant_list[key]['time']
-			except:
-				continue
-
-			tmp=len(time)
-			if nt_max<tmp:
-				nt_max=tmp
-		
-
- 		#GENERAL needed
-		nR_max=0
-		for key in self.keys:
-			try:
-				R=self.quant_list[key]['R']
-			except:
-				continue
-			
-			tmp=len(R)
-			if nR_max<tmp:
-				nR_max=tmp
-			
-		t_u=np.linspace(self.t_min,self.t_max,int(nt_max*inter_factor))
-		R_u=np.linspace(self.R_min,self.R_max,int(nR_max*inter_factor))
-
-		self.coord['time']=t_u
-		self.coord['R']=R_u
-		
-		#interperlation
-		for key in self.keys_t_r:
-			data=self.quant_list[key]['data']
-			t=self.quant_list[key]['time']
-			R=self.quant_list[key]['R']
-			#print(key)
-			#print(np.shape(data))
-			#print(len(t))
-			#print(len(R))
-			#print(len(t_u))
-			#print(len(R_u))
-			data_u=self.interp_2D(data,t,R,t_u,R_u,plot=plot)
-			
-			self.quant_list[key]['data']=data_u
-			self.quant_list[key]['time']=t_u
-			self.quant_list[key]['R']=R_u
-			
-
-		
-		
-		for key in self.keys_t:
-			data=self.quant_list[key]['data']
-			t=self.quant_list[key]['time']
-			data_u=np.interp(t_u,t,data)
-			
-			self.quant_list[key]['data']=data_u
-			self.quant_list[key]['time']=t_u
-
-		return self.quant_list
-
-	def smooth_all_quant(self,box_pts=3,plot=False):
-		pass
-
-	def chose_time(self,box_pts=5,plot=False):
-		t_min=0
-		t_max=1
-		pass
-
-	def cut_R(self):
-		for key in self.keys_t_r:
-			data=self.quant_list[key]['data']
-			R=self.quant_list[key]['R']
-			
-			R_min_index=np.argmin(abs(R-self.R_min))
-			R_max_index=np.argmin(abs(R-self.R_max))
-
-			#print(R_min_index)
-			#print(R_max_index)
-
-			self.quant_list[key]['data']=data[:,R_min_index:R_max_index+1]
-			self.quant_list[key]['R']=R[R_min_index:R_max_index+1]
-
-		#plt.plot(self.quant_list[key]['R'],\
-		#		self.quant_list[key]['data'][10,:])
-
-
-	def cut_t(self):
-		for key in self.keys_t_r:
-			data=self.quant_list[key]['data']
-			t=self.quant_list[key]['time']
-			
-			t_min_index=np.argmin(abs(t-self.t_min))
-			t_max_index=np.argmin(abs(t-self.t_max))
-
-			self.quant_list[key]['data']=data[t_min_index:t_max_index+1,:]
-			self.quant_list[key]['time']=t[t_min_index:t_max_index+1]
-		
-		for key in self.keys_t:
-			data=self.quant_list[key]['data']
-			t=self.quant_list[key]['time']
-			
-			t_min_index=np.argmin(abs(t-self.t_min))
-			t_max_index=np.argmin(abs(t-self.t_max))
-
-			self.quant_list[key]['data']=data[t_min_index:t_max_index+1]
-			self.quant_list[key]['time']=t[t_min_index:t_max_index+1]
-	
 	#Lref,Lref_err=calc_Lref_avg()
 	def calc_Lref_avg(self,plot=False):
 		Lref_t=self.quant_list['Lref']['data']
@@ -414,8 +432,24 @@ class MDS_obj:
 		return self.Lref,self.Lref_err
 
 
-	def calc_beta(self):
-		beta=403.*10**(-5)*ne*te/Bref**2.
+	
+	def calc_grad(self,data,t,R):
+		dprime=np.zeros(np.shape(data))
+
+		for i in range(len(t)):
+
+			d=data[i,:]
+			d = self.smooth(d, 5) 
+
+			print(len(d))
+			print(len(R))
+			dd = np.gradient(d,R)
+			print()
+			print(len(d))
+			print(len(dd))
+			dprime[i,:] = -dd/d
+		
+		return dprime
 
 	#dT_dR=calc_dT_dR(plot=False)
 	def calc_dT_dR(self,plot=False):
@@ -533,35 +567,7 @@ class MDS_obj:
 
 		return R_list,a_LTe_list,Te_ped_list,Te_ped_index_list
 
-
-	#x_location,y_max=find_peak(x,y,plot=False)
-	def find_peak(self,x,y,plot=False):
-		max_index=np.argmax(abs(y))
-		if plot:
-			plt.clf()
-			plt.plot(x,y)
-			plt.axvline(x[max_index])
-			plt.show()
-		return x[max_index],y[max_index],max_index
-
-	def calc_grad(self,data,t,R):
-		dprime=np.zeros(np.shape(data))
-
-		for i in range(len(t)):
-
-			d=data[i,:]
-			d = self.smooth(d, 5) 
-
-			print(len(d))
-			print(len(R))
-			dd = np.gradient(d,R)
-			print()
-			print(len(d))
-			print(len(dd))
-			dprime[i,:] = -dd/d
-		
-		return dprime
-
+	#coll_ei=calc_coll_ei(plot=False)
 	def calc_coll_ei(self,plot=False):
 		Lref=self.Lref
 		#ne (/cm^3) ---> ne (10^19 /m^3)
@@ -587,17 +593,268 @@ class MDS_obj:
 			plt.ylabel('coll_ei (kHz)')
 			plt.show()
 		return coll_ei
+	
+	#beta=calc_beta(plot=False)
+	def calc_beta(self,plot=False):
+		quant={}
+		#ne (/cm^3) ---> ne (10^19 /m^3)
+		ne=self.quant_list['ne']['data']*10.**(6.-19.)
+		#Te (keV)
+		te=self.quant_list['Te']['data']
 
-	def Auto_scan(self,shot_num=132588,plot=False):
+		time=self.quant_list['Te']['time']
+		R=self.quant_list['Te']['R']
+		(nt,nr)=np.shape(ne)
+
+		Bref=self.quant_list['Bref']['data']
+		Bref=np.tile(Bref, (nr, 1)).T
+
+		beta=403.*10**(-5)*np.divide(ne*te,(Bref**2.))
+
+		quant['name']='beta'
+		quant['data']=beta
+		quant['R']=R
+		quant['time']=time
+		self.quant_list['beta']=quant
+		if plot:
+			plt.clf()
+			plt.plot(quant_list['beta']['data'][int(0.5*nt),:])
+			plt.xlabel('R (m)')
+			plt.ylabel('beta')
+			plt.show()
+		return beta
+
+	def calc_ome(self,plot=False):
+		quant={}
+		#ne (/cm^3) ---> ne (10^19 /m^3)
+		ne=self.quant_list['ne']['data']*10.**(6.-19.)
+		#Te (keV)
+		te=self.quant_list['Te']['data']
+
+		time=self.quant_list['Te']['time']
+		R=self.quant_list['Te']['R']
+		(nt,nr)=np.shape(ne)
+
+		Bref=self.quant_list['Bref']['data']
+		Bref=np.tile(Bref, (nr, 1)).T
+
+		beta=403.*10**(-5)*np.divide(ne*te,(Bref**2.))
+
+		quant['name']='beta'
+		quant['data']=beta
+		quant['R']=R
+		quant['time']=time
+		self.quant_list['beta']=quant
+		if plot:
+			plt.clf()
+			plt.plot(quant_list['beta']['data'][int(0.5*nt),:])
+			plt.xlabel('R (m)')
+			plt.ylabel('beta')
+			plt.show()
+		return beta
+
+
+	#x_location,y_max=find_peak(x,y,plot=False)
+	def find_peak(self,x,y,plot=False):
+		max_index=np.argmax(abs(y))
+		if plot:
+			plt.clf()
+			plt.plot(x,y)
+			plt.axvline(x[max_index])
+			plt.show()
+		return x[max_index],y[max_index],max_index
+
+	
+	def find_dB1_peak(self,plot=False):
+		quant=self.dB
+		
+		dB_L_frequency=quant['data_low_freq']
+		dB_M_frequency=quant['data_mid_freq']
+		frequency_kHZ=quant['freq']
+
+		dB_frequency=dB_M_frequency+dB_L_frequency
+		
+		dB_frequency=self.smooth(dB_frequency, box_pts=50)
+		peaks,_=signal.find_peaks(dB_frequency,prominence=abs(np.mean(dB_frequency)-3*np.std(dB_frequency)))
+		#peaks,_=signal.find_peaks(dB_frequency, prominence=1)
+		#print(peaks)
+		f_list=frequency_kHZ[peaks]
+		dB_list=dB_frequency[peaks]
+		if plot:
+			plt.plot(frequency_kHZ,dB_frequency,alpha=0.3)
+			plt.scatter(f_list,dB_list,s=10)
+			plt.xlabel('kHz')
+			plt.ylabel('Gauss?/sqrt(Hz)')
+			#plt.xscale('log')
+		return f_list,dB_list
+
+	def interp_all_quant(self,inter_factor=2,plot=False):
+
+		nt_max=0
+		for key in self.keys:
+			try:
+				time=self.quant_list[key]['time']
+			except:
+				continue
+
+			tmp=len(time)
+			if nt_max<tmp:
+				nt_max=tmp
+		
+
+ 		#GENERAL needed
+		nR_max=0
+		for key in self.keys:
+			try:
+				R=self.quant_list[key]['R']
+			except:
+				continue
+			
+			tmp=len(R)
+			if nR_max<tmp:
+				nR_max=tmp
+			
+		t_u=np.linspace(self.t_min,self.t_max,int(nt_max*inter_factor))
+		R_u=np.linspace(self.R_min,self.R_max,int(nR_max*inter_factor))
+
+		self.coord['time']=t_u
+		self.coord['R']=R_u
+		
+		#interperlation
+		for key in self.keys_t_r:
+			data=self.quant_list[key]['data']
+			t=self.quant_list[key]['time']
+			R=self.quant_list[key]['R']
+			#print(key)
+			#print(np.shape(data))
+			#print(len(t))
+			#print(len(R))
+			#print(len(t_u))
+			#print(len(R_u))
+			data_u=self.interp_2D(data,t,R,t_u,R_u,plot=plot)
+			
+			self.quant_list[key]['data']=data_u
+			self.quant_list[key]['time']=t_u
+			self.quant_list[key]['R']=R_u
+			
+
+		
+		
+		for key in self.keys_t:
+			data=self.quant_list[key]['data']
+			t=self.quant_list[key]['time']
+			data_u=np.interp(t_u,t,data)
+			
+			self.quant_list[key]['data']=data_u
+			self.quant_list[key]['time']=t_u
+
+		return self.quant_list
+
+	def smooth_all_quant(self,box_pts=3,plot=False):
+		pass
+
+	def chose_time(self,box_pts=5,plot=False):
+		Lref=self.quant_list['Lref']['data']
+		time=self.quant_list['Te']['time']
+		
+		#def moving_avg(x, w):
+		#	return np.convolve(x, np.ones(w), 'valid') / w
+		def moving_avg(x, w):
+			return np.array([np.mean(x[i:i+w]) for i in range(len(x)-w-1)])
+		
+		def moving_std(x, w):
+			return np.array([np.std(x[i:i+w]) for i in range(len(x)-w-1)])
+		MACD_3=moving_avg(Lref, 5)
+		time_3=moving_avg(time, 5)
+		M_std_3=moving_std(Lref, 5)
+		quant=M_std_3/MACD_3
+		crit=0.01
+		index=next(x[0] for x in enumerate(quant) if x[1] > crit)
+
+		t_max=time_3[index]
+		self.t_max=t_max
+
+		if plot:
+			plt.plot(time,Lref,label='data')
+			plt.plot(time_3,MACD_3,label='MACD_3')
+			plt.plot(time_3,M_std_3,label='MACD_3')
+			plt.axvline(t_max)
+			plt.legend()
+
+	def cut_R(self):
+		for key in self.keys_t_r:
+			data=self.quant_list[key]['data']
+			R=self.quant_list[key]['R']
+			
+			R_min_index=np.argmin(abs(R-self.R_min))
+			R_max_index=np.argmin(abs(R-self.R_max))
+
+			#print(R_min_index)
+			#print(R_max_index)
+
+			self.quant_list[key]['data']=data[:,R_min_index:R_max_index+1]
+			self.quant_list[key]['R']=R[R_min_index:R_max_index+1]
+
+		#plt.plot(self.quant_list[key]['R'],\
+		#		self.quant_list[key]['data'][10,:])
+
+
+	def cut_t(self):
+		for key in self.keys_t_r:
+			data=self.quant_list[key]['data']
+			t=self.quant_list[key]['time']
+			
+			t_min_index=np.argmin(abs(t-self.t_min))
+			t_max_index=np.argmin(abs(t-self.t_max))
+
+			self.quant_list[key]['data']=data[t_min_index:t_max_index+1,:]
+			self.quant_list[key]['time']=t[t_min_index:t_max_index+1]
+		
+		for key in self.keys_t:
+			data=self.quant_list[key]['data']
+			t=self.quant_list[key]['time']
+			
+			t_min_index=np.argmin(abs(t-self.t_min))
+			t_max_index=np.argmin(abs(t-self.t_max))
+
+			self.quant_list[key]['data']=data[t_min_index:t_max_index+1]
+			self.quant_list[key]['time']=t[t_min_index:t_max_index+1]
+	
+
+	def get_all_quant(self,plot=False):
+		if self.device=='nstx':
+			quant=self.get_Bt(plot)		#Bt(time,r)
+			quant=self.get_q0psi(plot)  	#q(time,r)
+			quant=self.get_Te(plot) 	#Te(r,time)
+			quant=self.get_ne(plot) 	#ne(time,r)
+			quant=self.get_Bref(plot) 	#Bref(time) Bt at axis
+			quant=self.get_Lref(plot) 	#Lref(time) minor radius
+			quant=self.get_psi_R(plot)
+		elif self.device=='d3d':
+			quant=self.get_Te(plot) 	#Te(r,time)
+			quant=self.get_ne(plot) 	#ne(time,r)
+			quant=self.get_Bref(plot) 	#Bref(time) Bt at axis
+			quant=self.get_Lref(plot) 	#Lref(time) minor radius
+		
+		self.keys=self.quant_list.keys()
+		return self.quant_list
+
+
+	def Auto_scan(self,device='nstx',shot_num=132588,plot=False):
 		self.set_shot_num(shot_num=shot_num)
+		self.set_device(device=device)
 		#get all the quantities
 		quant_list=self.get_all_quant(plot=False)
+		
+		#interpolation all the quantities to uniform grid
+		quant_list=self.interp_all_quant(inter_factor=1.2,plot=False)
+		
+		self.chose_time(plot=False)
 		#cut the R from psi=0 to psi=0.99 ish
 		self.cut_R()
 		#cut time to from 0.3s to 0.8s
 		self.cut_t()
-		#interpolation all the quantities to uniform grid
-		quant_list=self.interp_all_quant(inter_factor=1.2,plot=False)
+
 		#calculate the average Lref
 		Lref,Lref_err=self.calc_Lref_avg(plot=False)
 		#calculate the dn_dR=dne/dR
@@ -611,13 +868,15 @@ class MDS_obj:
 		#calculate the collision
 		coll_ei=self.calc_coll_ei(plot=False)
 		coll_ei_ped_value=[coll_ei[i,ne_ped_index_list[i]] for i in range(len(ne_ped_index_list))]
-		
+		beta=self.calc_beta(plot=False)
+		beta_ped_value=[beta[i,ne_ped_index_list[i]] for i in range(len(ne_ped_index_list))]
 		t=self.quant_list['Te']['time']
 
 		d={}
 		d['shot_num']=[shot_num]*len(t)
 		d['time']=t
 		d['Lref']=self.quant_list['Lref']['data']
+		d['beta']=beta_ped_value
 		d['a_Lne']=a_Lne_list
 		d['a_LTe']=a_LTe_list
 		d['coll_ei']=coll_ei_ped_value
@@ -626,7 +885,7 @@ class MDS_obj:
 
 		if plot:
 
-			if 1==1:
+			if 1==0:
 				plt.clf()
 				plt.plot(t,R_ne_list,label=r'R($ne_{mid ped}$)')
 				plt.plot(t,R_Te_list,label=r'R($Te_{mid ped}$)')
@@ -640,10 +899,25 @@ class MDS_obj:
 				plt.xlabel('t (s)')
 				plt.ylabel('coll_ei_ped_value (kHz)')
 				plt.show()
+			if 1==0:
+				plt.clf()
+				plt.plot(t,beta_ped_value)
+				plt.xlabel('t (s)')
+				plt.ylabel('beta')
+				plt.show()
 		return df
 
 	
 if test:
-	shot_num=132588
-	MDS_obj=MDS_obj()
-	df=MDS_obj.Auto_scan(shot_num=shot_num,plot=True)
+	shot_num=132591 
+	device='nstx' #'nstx', 'd3d'
+	MDS_obj=MDS_obj(device=device,shot_num=shot_num)
+	#dB=MDS_obj.get_dB1(plot=False)
+	#f_list,dB_list=MDS_obj.find_dB1_peak(plot=True)
+	#print(f_list)
+	#print(dB_list)
+	df=MDS_obj.Auto_scan(device=device,shot_num=shot_num,plot=False)
+	print(df)
+	if 1==1:
+		plt.plot(df.Lref)
+		plt.plot(df.beta)
