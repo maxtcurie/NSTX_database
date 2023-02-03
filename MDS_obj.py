@@ -5,7 +5,7 @@ from scipy import signal
 
 from OMFITlib_FFT_general import spectral_density
 
-test=False
+test=True
 
 mref=2.
 m_SI = mref *1.6726*10**(-27)
@@ -465,9 +465,12 @@ class MDS_obj:
 
 		if plot:
 			Te_tmp=self.smooth(Te[int(0.5*nt),:],5)
-			plt.scatter(R,Te_tmp/np.max(Te_tmp))
-			plt.plot(R,dT_dR[int(0.5*nt),:]/np.max(abs(dT_dR[int(0.5*nt),:])))
-
+			plt.scatter(R,Te_tmp/np.max(Te_tmp),label='Te')
+			plt.plot(R,dT_dR[int(0.5*nt),:]/np.max(abs(dT_dR[int(0.5*nt),:])),label='dT/dR')
+			plt.axvline(R[np.argmax(dT_dR[int(0.5*nt),:])],color='red')
+			plt.legend()
+			plt.xlabel('r (m)',fontsize=15)
+			plt.ylabel('a.u.',fontsize=15)
 		self.dT_dR=dT_dR
 
 		return self.dT_dR
@@ -493,8 +496,8 @@ class MDS_obj:
 
 		return self.dn_dR
 
-	#R_list,a_Lne_list,ne_ped_list=calf_Ln_peak(plot=False)
-	def calf_Ln_peak(self,plot=False):
+	#R_list,a_Lne_list,ne_ped_list=calc_Ln_peak(plot=False)
+	def calc_Ln_peak(self,plot=False):
 		R=self.quant_list['ne']['R']
 		t=self.quant_list['ne']['time']
 		dn_dR=self.dn_dR
@@ -530,8 +533,8 @@ class MDS_obj:
 		self.ne_ped_index=ne_ped_index_list
 		return R_list,a_Lne_list,ne_ped_list, ne_ped_index_list
 
-	#R_list,a_LTe_list,Te_ped_list=calf_Lt_peak(plot=False)
-	def calf_Lt_peak(self,plot=False):
+	#R_list,a_LTe_list,Te_ped_list=calc_Lt_peak(plot=False)
+	def calc_Lt_peak(self,plot=False):
 		R=self.quant_list['Te']['R']
 		t=self.quant_list['Te']['time']
 		dT_dR=self.dT_dR
@@ -555,11 +558,21 @@ class MDS_obj:
 			Te_ped_index_list.append(max_index)
 
 		if plot:
-			plt.clf()
-			plt.plot(t,a_LTe_list)
-			plt.xlabel('time')
-			plt.ylabel('a/LTe')
-			plt.show()
+			if 1==0:
+				t_index=int(0.5*nt)
+				plt.clf()
+				plt.plot(R,(dT_dR/Te_ped)*self.Lref)
+				plt.axvline(R_location[t_index])
+				plt.xlabel('time (s)')
+				plt.ylabel('a/LTe')
+				plt.show()
+
+			if 1==1:
+				plt.clf()
+				plt.plot(t,a_LTe_list)
+				plt.xlabel('time (s)')
+				plt.ylabel('a/LTe')
+				plt.show()
 
 		self.R_Te_mid_ped=R_list
 		self.a_LTe_list=a_LTe_list
@@ -688,6 +701,34 @@ class MDS_obj:
 			#plt.xscale('log')
 		return f_list,dB_list
 
+
+	#H_mode_or_not=self.judge_H_mode(plot=True)
+	def judge_H_mode(self,plot=True):
+		#1: H-mode, #0: L-mode, #-1: do not use
+		dn_dR=self.dn_dR
+		dT_dR=self.dT_dR
+		R=self.quant_list['ne']['R']
+		t=self.quant_list['ne']['time']
+		(nt,nr)=np.shape(dT_dR)
+		confinment_mode_list=np.zeros(nt,dtype=int)
+		for i in range(nt):
+			confinment_mode=0
+			confinment_mode_list[i]=confinment_mode
+		if plot:
+			plt.clf()
+			#plt.plot(R,dn_dR[int(0.5*nt),:]/np.max(abs(dn_dR[int(0.5*nt),:])),label='n')
+			#plt.plot(R,dT_dR[int(0.5*nt),:]/np.max(abs(dT_dR[int(0.5*nt),:])),label='T')
+			#plt.plot(R,dT_dR[int(0.5*nt),:]*dn_dR[int(0.5*nt),:]/np.max(abs(dT_dR[int(0.5*nt),:]*dn_dR[int(0.5*nt),:])),label='p')
+			
+			plt.plot(R,dn_dR[int(0.5*nt),:],label='n')
+			#plt.plot(R,dT_dR[int(0.5*nt),:],label='T')
+			#plt.plot(R,dT_dR[int(0.5*nt),:]*dn_dR[int(0.5*nt),:],label='p')
+			
+			plt.legend()
+			plt.show()
+		self.confinment_mode_list=confinment_mode_list
+		return confinment_mode_list
+
 	def interp_all_quant(self,interp_factor=2,plot=False):
 
 		nt_max=0
@@ -750,9 +791,7 @@ class MDS_obj:
 
 		return self.quant_list
 
-	def smooth_all_quant(self,box_pts=3,plot=False):
-		pass
-
+	
 	def chose_time(self,plot=False):
 		Lref=self.quant_list['Lref']['data']
 		time=self.quant_list['Lref']['time']
@@ -781,13 +820,23 @@ class MDS_obj:
 			t_max=self.t_max
 
 		if plot:
-			plt.plot(time,Lref,label='data')
-			plt.plot(time_5,MACD_5,label='avg_5')
-			plt.plot(time_5,M_std_5,label='std_5')
-			plt.axvline(t_max)
+			plt.plot(time,Lref,label='Data')
+			plt.plot(time_5,MACD_5,label='Avgerage')
+			plt.plot(time_5,M_std_5,label='Standard Deviation')
+			plt.xlabel('time (s)',fontsize=15)
+			plt.ylabel('a (m)',fontsize=15)
+			plt.axvline(t_max,color='red')
 			plt.legend()
 
-	def cut_R(self):
+	def cut_R(self,plot=False):
+		if plot:
+			plt.plot(self.quant_list['Te']['R'],\
+					self.quant_list['Te']['data'][10,:])
+			plt.xlabel('r (m)',fontsize=15)
+			plt.ylabel(r'$T_e (keV)$',fontsize=15)
+			plt.axvline(self.R_min,color='red')
+			plt.axvline(self.R_max,color='red')
+			#plt.legend()
 		for key in self.keys_t_r:
 			data=self.quant_list[key]['data']
 			R=self.quant_list[key]['R']
@@ -800,9 +849,7 @@ class MDS_obj:
 
 			self.quant_list[key]['data']=data[:,R_min_index:R_max_index+1]
 			self.quant_list[key]['R']=R[R_min_index:R_max_index+1]
-
-		#plt.plot(self.quant_list[key]['R'],\
-		#		self.quant_list[key]['data'][10,:])
+			
 
 
 	def cut_t(self):
@@ -853,7 +900,7 @@ class MDS_obj:
 		quant_list=self.get_all_quant(plot=False)
 		self.chose_time(plot=False)
 		#cut the R from psi=0 to psi=0.99 ish
-		self.cut_R()
+		self.cut_R(plot=False)
 		#cut time to from 0.3s to 0.8s
 		self.cut_t()
 		#self.test_save_worthy()
@@ -865,11 +912,16 @@ class MDS_obj:
 		#calculate the dn_dR=dne/dR
 		dn_dR=self.calc_dn_dR(plot=False)
 		#calculate the dT_dR=dTe/dR
-		dT_dR=self.calc_dT_dR(plot=False)
+		dT_dR=self.calc_dT_dR(plot=True)
+
 		#calculate the R, a/Lne, ne in dne/dR peak
-		R_ne_list,a_Lne_list,ne_ped_list,ne_ped_index_list=self.calf_Ln_peak(plot=False)
+		R_ne_list,a_Lne_list,ne_ped_list,ne_ped_index_list=self.calc_Ln_peak(plot=False)
 		#calculate the R, a/LTe, Te in dTe/dR peak
-		R_Te_list,a_LTe_list,Te_ped_list,Te_ped_index_list=self.calf_Lt_peak(plot=False)
+		R_Te_list,a_LTe_list,Te_ped_list,Te_ped_index_list=self.calc_Lt_peak(plot=False)
+		
+		#calculate if that is H-mode
+		#H_mode_or_not=self.judge_H_mode(plot=False)
+
 		#calculate the collision
 		coll_ei=self.calc_coll_ei(plot=False)
 		coll_ei_ped_value=[coll_ei[i,ne_ped_index_list[i]] for i in range(len(ne_ped_index_list))]
@@ -885,11 +937,12 @@ class MDS_obj:
 		d['a_Lne']=a_Lne_list
 		d['a_LTe']=a_LTe_list
 		d['coll_ei']=coll_ei_ped_value
+		d['R_ne_list']=R_ne_list
+		d['R_Te_list']=R_Te_list
 
 		df=pd.DataFrame(d)
 
 		if plot:
-
 			if 1==0:
 				plt.clf()
 				plt.plot(t,R_ne_list,label=r'R($ne_{mid ped}$)')
@@ -914,7 +967,7 @@ class MDS_obj:
 
 	
 if test:
-	shot_num=114154 #132588 
+	shot_num=132588 #132588 (H-mode), 141716 (L-mode)
 	device='nstx' #'nstx', 'd3d'
 	MDS_obj=MDS_obj(device=device,shot_num=shot_num)
 	#dB=MDS_obj.get_dB1(plot=False)
@@ -923,6 +976,6 @@ if test:
 	#print(dB_list)
 	df=MDS_obj.Auto_scan(device=device,shot_num=shot_num,plot=False)
 	print(df)
-	if 1==1:
+	if 1==0:
 		plt.plot(df.Lref)
 		plt.plot(df.beta)
